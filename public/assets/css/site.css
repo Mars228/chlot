@@ -1,0 +1,46 @@
+
+.logo-img { height: 36px; width: auto; }
+
+/* „Chipy” bez tła — tylko kolor tekstu */
+.chip { display:inline-block; padding:2px 6px; border-radius:12px; margin:1px 2px; font-weight:600; font-size:12px; line-height:1.25; }
+.chip-hot-text  { color:#a40000; }   /* czerwony tekst dla HOT (bez tła) */
+.chip-cold-text { color:#003f9e; }   /* niebieski tekst dla COLD (bez tła) */
+
+
+table.table {
+	font-size: 12px;
+}
+
+/* ── NAGŁÓWKI kolumn (A/B even/odd) ─────────────────────────────── */
+table.table thead th.th-bg-hot-even  { background-color:#ffeaea !important; }
+table.table thead th.th-bg-hot-odd   { background-color:#ffd6d6 !important; }
+table.table thead th.th-bg-cold-even { background-color:#eaf2ff !important; }
+table.table thead th.th-bg-cold-odd  { background-color:#d6e6ff !important; }
+
+/* ── KOMÓRKI w tbody – wygraj z .table-striped (zebra) ───────────── */
+.table.table-striped tbody td.td-bg-hot-even  { background-color:#ffeaea !important; }
+.table.table-striped tbody td.td-bg-hot-odd   { background-color:#ffd6d6 !important; }
+.table.table-striped tbody td.td-bg-cold-even { background-color:#eaf2ff !important; }
+.table.table-striped tbody td.td-bg-cold-odd  { background-color:#d6e6ff !important; }
+
+/* (opcjonalnie) gdy masz też .table-hover – zachowaj nasze tła przy hoverze */
+.table-hover tbody tr:hover > td.td-bg-hot-even  { background-color:#ffeaea !important; }
+.table-hover tbody tr:hover > td.td-bg-hot-odd   { background-color:#ffd6d6 !important; }
+.table-hover tbody tr:hover > td.td-bg-cold-even { background-color:#eaf2ff !important; }
+.table-hover tbody tr:hover > td.td-bg-cold-odd  { background-color:#d6e6ff !important; }
+
+
+/* Lekki modal (tylko CSS) */
+.jlte-modal{
+  position:fixed; inset:0; z-index:1050;
+  background:rgba(0,0,0,.4);
+  display:none; align-items:center; justify-content:center;
+}
+.jlte-dialog{
+  width:520px; max-width:90vw; background:#fff; border-radius:.5rem;
+  box-shadow:0 10px 30px rgba(0,0,0,.2); overflow:hidden;
+}
+.jlte-header,.jlte-footer{ padding:.75rem 1rem; background:#f8f9fa; display:flex; align-items:center; justify-content:space-between; }
+.jlte-title{ font-weight:600; }
+.jlte-body{ padding:1rem; }
+.progress{ height:20px; }
