@@ -30,3 +30,4 @@ draw_results → (stat_schemas) → stat_results → strategies → bet_batches/
 - liczby A/B: CSV rosnąco, bez zer wiodących
 - stałe nazwy dla głównych metod (index; create; save; edit; update; delete)
 - nazwy głównych plików view: *name*_index, *name*_edit, *name*_create
+- nazwy kontrolerów, modeli, tabel i column w bazie po angielsku, ewentualne opisy i wyjaśnienia robimy po polsku
