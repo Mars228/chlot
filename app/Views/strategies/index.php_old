@@ -1,0 +1,107 @@
+<section class="content-header d-flex justify-content-between align-items-center">
+  <h1 class="h3 mb-0">Strategie (ostatnie 100)</h1>
+</section>
+<?= view('partials/flash') ?>
+
+<div class="card card-outline card-primary mt-3">
+  <div class="card-body p-0">
+    <table class="table table-striped mb-0 align-middle">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Gra</th>
+          <th>Schema</th>
+          <th>StatRes</th>
+          <th>from → next</th>
+          <th>A: hot/cold</th>
+          <th>A: rekomendacje</th>
+          <th>A: hot(e/o), cold(e/o)</th>
+          <th>B: hot/cold</th>
+          <th>B: rekomendacje</th>
+          <th>B: hot(e/o), cold(e/o)</th>
+          <th>Data</th>
+        </tr>
+      </thead>
+      <tbody>
+<?php
+  // defensywnie, żeby nie było Notice’ów
+  $list    = $list    ?? [];
+  $games   = $games   ?? [];
+  $schemas = $schemas ?? [];
+  $total   = $total   ?? count($list);
+
+  if (!empty($list)):
+    foreach ($list as $r):
+      $gId = (int)($r['game_id'] ?? 0);
+      $g   = $games[$gId] ?? null;
+      $sch = (!empty($r['schema_id']) && !empty($schemas[$r['schema_id']])) ? $schemas[$r['schema_id']] : null;
+
+      // rekomendacje (JSON -> array)
+      $recA = !empty($r['recommend_a_json']) ? (json_decode($r['recommend_a_json'], true) ?: []) : [];
+      $recB = !empty($r['recommend_b_json']) ? (json_decode($r['recommend_b_json'], true) ?: []) : [];
+?>
+  <tr>
+    <td><?= (int)$r['id'] ?></td>
+    <td><?= esc($g['name'] ?? $r['game_id']) ?></td>
+    <td><?= !empty($r['schema_id']) ? ('#'.(int)$r['schema_id'].' '.esc($sch['scheme'] ?? '')) : '—' ?></td>
+    <td>#<?= (int)$r['stat_result_id'] ?></td>
+    <td><code><?= (int)$r['from_draw_system_id'] ?></code> → <code><?= (int)$r['next_draw_system_id'] ?></code></td>
+
+    <!-- A: hot/cold -->
+    <td><?= (int)($r['hot_count_a'] ?? 0) ?>/<?= (int)($r['cold_count_a'] ?? 0) ?></td>
+
+    <!-- A: rekomendacje -->
+    <td>
+      <?php if ($recA): ?><small>
+        <?php foreach ($recA as $k => $rc): ?>
+          K<?= esc($k) ?>: H<?= (int)($rc['hot'] ?? 0) ?>/C<?= (int)($rc['cold'] ?? 0) ?>&nbsp;
+        <?php endforeach; ?>
+      </small><?php else: ?>—<?php endif; ?>
+    </td>
+
+    <!-- A: hot(e/o), cold(e/o) -->
+    <td>
+      hot: <?= (int)($r['hot_even_a'] ?? 0) ?>/<?= (int)($r['hot_odd_a'] ?? 0) ?>,
+      cold: <?= (int)($r['cold_even_a'] ?? 0) ?>/<?= (int)($r['cold_odd_a'] ?? 0) ?>
+    </td>
+
+    <!-- B: hot/cold -->
+    <td>
+      <?php if (array_key_exists('hot_count_b', $r) && $r['hot_count_b'] !== null): ?>
+        <?= (int)$r['hot_count_b'] ?>/<?= (int)$r['cold_count_b'] ?>
+      <?php else: ?>—<?php endif; ?>
+    </td>
+
+    <!-- B: rekomendacje -->
+    <td>
+      <?php if ($recB): ?><small>
+        <?php foreach ($recB as $k => $rc): ?>
+          K<?= esc($k) ?>: H<?= (int)($rc['hot'] ?? 0) ?>/C<?= (int)($rc['cold'] ?? 0) ?>&nbsp;
+        <?php endforeach; ?>
+      </small><?php else: ?>—<?php endif; ?>
+    </td>
+
+    <!-- B: hot(e/o), cold(e/o) -->
+    <td>
+      <?php if (array_key_exists('hot_even_b', $r) && $r['hot_even_b'] !== null): ?>
+        hot: <?= (int)$r['hot_even_b'] ?>/<?= (int)$r['hot_odd_b'] ?>,
+        cold: <?= (int)$r['cold_even_b'] ?>/<?= (int)$r['cold_odd_b'] ?>
+      <?php else: ?>—<?php endif; ?>
+    </td>
+
+    <td><small><?= esc($r['created_at'] ?? '') ?></small></td>
+  </tr>
+<?php
+    endforeach;
+  else:
+?>
+  <tr>
+    <td colspan="12" class="text-center py-4">
+      Brak danych do wyświetlenia (total: <?= (int)$total ?>).
+    </td>
+  </tr>
+<?php endif; ?>
+      </tbody>
+    </table>
+  </div>
+</div>
