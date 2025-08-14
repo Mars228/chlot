@@ -29,4 +29,4 @@ draw_results → (stat_schemas) → stat_results → strategies → bet_batches/
 - daty w listach: dd/mm/yyyy
 - liczby A/B: CSV rosnąco, bez zer wiodących
 - stałe nazwy dla głównych metod (index; create; save; edit; update; delete)
-- nazwy głównych plików view: index, edit, update
+- nazwy głównych plików view: *name*_index, *name*_edit, *name*_create
