@@ -1,3 +1,4 @@
-2025-08-14: Ocena kuponu na losowaniu = check + 1
-2025-08-14: Strategie SIMPLE (SUM/PAR), baseline = kupony losowe dla porównania
-2025-08-14: Lotto: zapisujemy tylko bazowe wyniki (bez Plus)
+- Strategie: typ SIMPLE (sum/par) – inne typy w przyszłości.
+- Ocena kuponu: losowanie = check + 1.
+- Lotto vs Plus: zapisujemy tylko podstawowe wyniki.
+- EuroJackpot: dwa zakresy A/B; normalizacja EJ PL↔world via offset (opis link).

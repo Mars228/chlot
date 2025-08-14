@@ -1,16 +1,30 @@
-# BLUEPRINT
+# BLUEPRINT – mapa projektu
 
 ## Moduły
-- GRY, LOSOWANIA, STATYSTYKI(S1/S2), STRATEGIE(SIMPLE), ZAKŁADY, WYNIKI, HOME, USTAWIENIA
+- GRY
+- LOSOWANIA
+- STATYSTYKI (schematy S1/S2; wyniki)
+- STRATEGIE (SIMPLE)
+- ZAKŁADY (serie + kupony + baseline)
+- WYNIKI (bet_results)
+- HOME
+- USTAWIENIA (OpenAPI klucze)
 
-## Tabele (skrót)
-- games, draw_results, settings, stat_schemas(name!), stat_results, strategies,
-  bet_batches(processed_*), bet_tickets, bet_results
+## Najważniejsze tabele
+- games
+- draw_results
+- settings
+- stat_schemas (NOWE pole: name VARCHAR(120))
+- stat_results
+- strategies
+- bet_batches (… + processed_strategies, processed_tickets, error_msg)
+- bet_tickets
+- bet_results
 
-## Flow
-draw_results → stat_schemas → stat_results → strategies → bet_batches/tickets → bet_results
+## Flow danych
+draw_results → (stat_schemas) → stat_results → strategies → bet_batches/bet_tickets → bet_results
 
 ## Konwencje
 - layout: layouts/adminlte + $content
-- daty w UI: dd/mm/yyyy
-- liczby: CSV rosnąco, bez zer wiodących
+- daty w listach: dd/mm/yyyy
+- liczby A/B: CSV rosnąco, bez zer wiodących
