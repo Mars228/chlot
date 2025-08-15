@@ -1,0 +1,14 @@
+*** Begin Patch
+*** Update File: app/Controllers/StatsController.php
+@@
+-        // zapisz
+-        $id = $sm->insert($data);
++        // nazwa schematu (opcjonalnie) + fallback
++        $name   = trim((string)$this->request->getPost('name'));
++        $scheme = (string)($data['scheme'] ?? $this->request->getPost('scheme') ?? '');
++        $params = $data['params_json'] ?? $this->request->getPost('params_json') ?? [];
++        $data['name'] = ($name !== '') ? $name : $this->_schemaAutoNameFromParams($scheme, $params);
++
++        // zapisz
++        $id = $sm->insert($data);
+*** End Patch
