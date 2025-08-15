@@ -1,0 +1,35 @@
+*** Begin Patch
+*** Update File: app/Views/stats/schemas_index.php
+@@
+ <?= view('partials/flash') ?>
++
++<?php
++// Lokalny fallback etykiety na liście (gdy name jest puste)
++if (!function_exists('schema_label_view')) {
++  function schema_label_view(array $r): string {
++    $scheme = $r['scheme'] ?? '';
++    $p = $r['params_json'] ?? [];
++    if (!is_array($p)) $p = json_decode((string)$p, true) ?: [];
++    $xa = $p['x_a'] ?? $p['xA'] ?? null;  $ya = $p['y_a'] ?? $p['yA'] ?? null;
++    $xb = $p['x_b'] ?? $p['xB'] ?? null;  $yb = $p['y_b'] ?? $p['yB'] ?? null;
++    $ka = $p['k_a'] ?? $p['kA'] ?? null;  $kb = $p['k_b'] ?? $p['kB'] ?? null;
++    if ($scheme==='S1') {
++      $a = ($xa!==null && $ya!==null) ? " A: x={$xa}, y={$ya}" : '';
++      $b = ($xb!==null && $yb!==null) ? " B: x={$xb}, y={$yb}" : '';
++      return trim('S1: x≥y'.$a.$b);
++    }
++    if ($scheme==='S2') {
++      $a = ($ka!==null) ? " A: k={$ka}" : '';
++      $b = ($kb!==null) ? " B: k={$kb}" : '';
++      return trim('S2: topK'.$a.$b);
++    }
++    return $scheme ?: 'Schemat';
++  }
++}
++?>
+@@
+-        <!-- kolumna: Schemat -->
+-        <td><?= esc($r['scheme']) ?></td>
++        <!-- kolumna: Schemat -->
++        <td><?= esc($r['name'] ?: schema_label_view($r)) ?></td>
+*** End Patch
