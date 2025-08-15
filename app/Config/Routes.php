@@ -57,7 +57,7 @@ $routes->group('statystyki', static function ($routes) {
     $routes->get('nowy',                   'StatsController::schemaCreateForm');
     $routes->post('nowy',                  'StatsController::schemaCreate');
     $routes->get('schemat/(:num)/edytuj',  'StatsController::schemaEdit/$1');
-    $routes->post('schemat/(:num)/zapisz', 'StatsController::schemaUpdate/$1');
+    //$routes->post('schemat/(:num)/zapisz', 'StatsController::schemaUpdate/$1');
     $routes->post('schemat/(:num)/start',  'StatsController::schemaStart/$1');
     $routes->post('schemat/(:num)/pauza',  'StatsController::schemaPause/$1');
     $routes->post('schemat/(:num)/usun',   'StatsController::schemaDelete/$1');
@@ -68,9 +68,12 @@ $routes->group('statystyki', static function ($routes) {
 
 // Schematy
     $routes->get('schematy',              'StatsController::schemasIndex');
-    $routes->get('schematy/nowy',         'StatsController::schemasCreate');
+    //$routes->get('schematy/nowy',         'StatsController::schemasCreate');
+    $routes->post('schemat/nowy', 'StatsController::schemaStore');         // CREATE (POST)
+    $routes->post('schemat/(:num)/zapisz', 'StatsController::schemaUpdate/$1'); // UPDATE (POST)
+
     $routes->post('schematy',             'StatsController::schemasStore');
-    $routes->get('schematy/(:num)/edytuj','StatsController::schemasEdit/$1');
+    //$routes->get('schematy/(:num)/edytuj','StatsController::schemasEdit/$1');
     $routes->post('schematy/(:num)',      'StatsController::schemasUpdate/$1');
     
 });
