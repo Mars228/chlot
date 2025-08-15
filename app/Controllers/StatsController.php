@@ -9,6 +9,37 @@ use App\Models\StrategyModel;
 
 class StatsController extends BaseController
 {
+
+    /**
+     * Fallback nazwy schematu na bazie scheme + params_json.
+     */
+    private function _schemaAutoNameFromParams(string $scheme, $params): string
+    {
+        if (!is_array($params)) {
+            $params = json_decode((string)$params, true) ?: [];
+        }
+        // tolerancja snake/camel
+        $xa = $params['x_a'] ?? $params['xA'] ?? null;
+        $ya = $params['y_a'] ?? $params['yA'] ?? null;
+        $xb = $params['x_b'] ?? $params['xB'] ?? null;
+        $yb = $params['y_b'] ?? $params['yB'] ?? null;
+        $ka = $params['k_a'] ?? $params['kA'] ?? null;
+        $kb = $params['k_b'] ?? $params['kB'] ?? null;
+
+        if ($scheme === 'S1') {
+            $a = ($xa!==null && $ya!==null) ? " A: x={$xa}, y={$ya}" : '';
+            $b = ($xb!==null && $yb!==null) ? " B: x={$xb}, y={$yb}" : '';
+            return trim('S1: x≥y'.$a.$b);
+        }
+        if ($scheme === 'S2') {
+            $a = ($ka!==null) ? " A: k={$ka}" : '';
+            $b = ($kb!==null) ? " B: k={$kb}" : '';
+            return trim('S2: topK'.$a.$b);
+        }
+        return $scheme ?: 'Schemat';
+    }
+
+
     // ====== UI: LISTA SCHEMATÓW ======
     public function schemasIndex()
     {
@@ -30,44 +61,41 @@ class StatsController extends BaseController
     public function schemaCreate()
     {
         $gameId = (int)$this->request->getPost('game_id');
-        $scheme = $this->request->getPost('scheme'); // scheme1|scheme2
 
-        if (!$gameId || !in_array($scheme,['scheme1','scheme2'],true)) {
-            return redirect()->back()->with('errors',['Uzupełnij grę i schemat.']);
-        }
+        // Schemat z POST
+$scheme = (string)($data['scheme'] ?? $this->request->getPost('scheme') ?? '');
 
-        // [NOWY BLOK] Ustal, czy gra ma pulę B
-$game = (new GameModel())->find($gameId);
-$hasB = ($game && $game['range_b_min'] !== null && $game['range_b_max'] !== null);
-
-        // Zbierz parametry schematu (A/B). Pula B pokaże się tylko, gdy gra ma zakres B (widok bierze to z data-dual)
-        $params = [];
-        if ($scheme==='scheme1') {
-            $params['x_a']=(int)$this->request->getPost('s1_x_a');
-            $params['y_a']=(int)$this->request->getPost('s1_y_a');
-            $params['x_b']=(int)($this->request->getPost('s1_x_b') ?? 0);
-            $params['y_b']=(int)($this->request->getPost('s1_y_b') ?? 0);
-        } else {
-            $params['min_all_a']=(int)$this->request->getPost('s2_min_all_a');
-            $params['top_k_a']  =(int)$this->request->getPost('s2_top_k_a');
-            $params['min_all_b']=(int)($this->request->getPost('s2_min_all_b') ?? 0);
-            $params['top_k_b']  =(int)($this->request->getPost('s2_top_k_b') ?? 0);
-        }
-
-        // [NOWY BLOK] Jeśli gra nie ma puli B, wyzeruj parametry B
-if (!$hasB) {
-    if ($scheme === 'scheme1') {
-        $params['x_b'] = 0;
-        $params['y_b'] = 0;
-    } else {
-        $params['min_all_b'] = 0;
-        $params['top_k_b']   = 0;
+// Zbierz parametry wg schematu
+$params = [];
+if ($scheme === 'scheme1' || strtoupper($scheme) === 'S1') {
+    $params['x_a'] = (int)$this->request->getPost('x_a');
+    $params['y_a'] = (int)$this->request->getPost('y_a');
+    $xb = $this->request->getPost('x_b'); $yb = $this->request->getPost('y_b');
+    if ($xb !== null && $yb !== null && $xb !== '' && $yb !== '') {
+        $params['x_b'] = (int)$xb;
+        $params['y_b'] = (int)$yb;
+    }
+} else { // scheme2
+    $params['min_all_a'] = (int)$this->request->getPost('min_all_a');
+    $params['top_k_a']   = (int)$this->request->getPost('top_k_a');
+    $mb = $this->request->getPost('min_all_b'); $kb = $this->request->getPost('top_k_b');
+    if ($mb !== null && $kb !== null && $mb !== '' && $kb !== '') {
+        $params['min_all_b'] = (int)$mb;
+        $params['top_k_b']   = (int)$kb;
     }
 }
+$data['params_json'] = json_encode($params, JSON_UNESCAPED_UNICODE);
+
+// Nazwa własna lub fallback
+$name = trim((string)$this->request->getPost('name'));
+$data['name'] = ($name !== '') ? $name : $this->_schemaAutoNameFromParams($scheme, $params);
+
+
 
         $schemaId = (new StatSchemaModel())->insert([
             'game_id'   => $gameId,
             'scheme'    => $scheme,
+
             'params_json'=> json_encode($params, JSON_UNESCAPED_UNICODE),
             'status'    => 'idle',
             'first_met_from_draw' => null,
@@ -78,19 +106,31 @@ if (!$hasB) {
         return redirect()->to('/statystyki')->with('success','Utworzono schemat. Możesz uruchomić obliczenia.');
     }
 
+
+
+
+
+
+
     // ====== UI: EDYCJA (tylko gdy idle) ======
     public function schemaEdit($id)
     {
         $m = new StatSchemaModel(); $s = $m->find($id);
+        
         if (!$s) return redirect()->to('/statystyki')->with('errors',['Nie znaleziono schematu.']);
+        
         if ($s['status']!=='idle') {
             return redirect()->to('/statystyki')->with('warning','Schemat już uruchomiony — edycja zablokowana.');
         }
+
         $game = (new GameModel())->find($s['game_id']);
         $params = json_decode($s['params_json'], true) ?: [];
+        
         $content = view('stats/schemas_edit', compact('s','game','params'));
         return view('layouts/adminlte', ['title'=>'Edytuj schemat','content'=>$content]);
     }
+
+
 
 
     public function schemaUpdate($id)
@@ -99,30 +139,36 @@ if (!$hasB) {
         if (!$s) return redirect()->to('/statystyki')->with('errors',['Nie znaleziono schematu.']);
         if ($s['status']!=='idle') return redirect()->to('/statystyki')->with('warning','Schemat już uruchomiony — edycja zablokowana.');
 
-        $scheme = $s['scheme']; $params=[];
-        if ($scheme==='scheme1') {
-            $params['x_a']=(int)$this->request->getPost('s1_x_a');
-            $params['y_a']=(int)$this->request->getPost('s1_y_a');
-            $params['x_b']=(int)($this->request->getPost('s1_x_b') ?? 0);
-            $params['y_b']=(int)($this->request->getPost('s1_y_b') ?? 0);
-        } else {
-            $params['min_all_a']=(int)$this->request->getPost('s2_min_all_a');
-            $params['top_k_a']  =(int)$this->request->getPost('s2_top_k_a');
-            $params['min_all_b']=(int)($this->request->getPost('s2_min_all_b') ?? 0);
-            $params['top_k_b']  =(int)($this->request->getPost('s2_top_k_b') ?? 0);
-        }
-
-$game = (new GameModel())->find($s['game_id']);
-$hasB = ($game && $game['range_b_min'] !== null && $game['range_b_max'] !== null);
-if (!$hasB) {
-    if ($scheme === 'scheme1') {
-        $params['x_b'] = 0;
-        $params['y_b'] = 0;
-    } else {
-        $params['min_all_b'] = 0;
-        $params['top_k_b']   = 0;
+        $scheme = (string)($data['scheme'] ?? $row['scheme'] ?? $this->request->getPost('scheme') ?? '');
+$params = [];
+if ($scheme === 'scheme1' || strtoupper($scheme) === 'S1') {
+    $params['x_a'] = (int)$this->request->getPost('x_a');
+    $params['y_a'] = (int)$this->request->getPost('y_a');
+    $xb = $this->request->getPost('x_b'); $yb = $this->request->getPost('y_b');
+    if ($xb !== null && $yb !== null && $xb !== '' && $yb !== '') {
+        $params['x_b'] = (int)$xb;
+        $params['y_b'] = (int)$yb;
+    }
+} else {
+    $params['min_all_a'] = (int)$this->request->getPost('min_all_a');
+    $params['top_k_a']   = (int)$this->request->getPost('top_k_a');
+    $mb = $this->request->getPost('min_all_b'); $kb = $this->request->getPost('top_k_b');
+    if ($mb !== null && $kb !== null && $mb !== '' && $kb !== '') {
+        $params['min_all_b'] = (int)$mb;
+        $params['top_k_b']   = (int)$kb;
     }
 }
+$data['params_json'] = json_encode($params, JSON_UNESCAPED_UNICODE);
+
+// Nazwa
+$name = trim((string)$this->request->getPost('name'));
+if ($name !== '') {
+    $data['name'] = $name;
+} else {
+    $rowLike = array_merge($row ?? [], $data);
+    $data['name'] = $this->_schemaAutoNameFromParams($scheme, $params);
+}
+
 
         
         $m->update($id, ['params_json'=>json_encode($params, JSON_UNESCAPED_UNICODE)]);
@@ -786,22 +832,7 @@ private function schemaAutoName(array $s): string
     return $sch ?: 'Schemat';
 }
 
-// ==== [DODAJ] lista schematów ====
-public function schemasIndex()
-{
-    $sm = new \App\Models\StatSchemaModel();
-    $gm = new \App\Models\GameModel();
 
-    $rows  = $sm->orderBy('id','DESC')->findAll(200);
-    $games = [];
-    foreach ($gm->orderBy('id','ASC')->findAll() as $g) $games[(int)$g['id']] = $g;
-
-    $content = view('stats/schemas_index', [
-        'rows'  => $rows,
-        'games' => $games,
-    ]);
-    return view('layouts/adminlte', ['title'=>'Statystyki — schematy', 'content'=>$content]);
-}
 
 // ==== [DODAJ] formularz nowego schematu ====
 public function schemasCreate()
@@ -816,6 +847,9 @@ public function schemasCreate()
 // ==== [DODAJ] zapis nowego schematu (z obsługą `name`) ====
 public function schemasStore()
 {
+
+    log_message('debug', __METHOD__.' reached');
+    
     $req    = $this->request;
     $gameId = (int)$req->getPost('game_id');
     $scheme = trim((string)$req->getPost('scheme'));
@@ -845,10 +879,61 @@ public function schemasStore()
     if (empty($data['name'])) $data['name'] = $this->schemaAutoName($data);
 
     $sm = new \App\Models\StatSchemaModel();
+
+// Normalizacja schematu z POST
+$schemeRaw = (string)($data['scheme'] ?? $this->request->getPost('scheme') ?? '');
+$schemeKey = strtolower(trim($schemeRaw)); // 'scheme1' / 's1' / 'scheme2' / 's2'
+
+// helper: liczba lub null (nie rzutuj pustego na 0)
+$toIntOrNull = static function($v) {
+    if ($v === '' || $v === null) return null;
+    return (int)$v;
+};
+
+// Zbierz parametry wg schematu
+$params = [];
+if ($schemeKey === 'scheme1' || $schemeKey === 's1') {
+    $xa = $toIntOrNull($this->request->getPost('x_a'));
+    $ya = $toIntOrNull($this->request->getPost('y_a'));
+    $xb = $toIntOrNull($this->request->getPost('x_b'));
+    $yb = $toIntOrNull($this->request->getPost('y_b'));
+    if ($xa !== null) $params['x_a'] = $xa;
+    if ($ya !== null) $params['y_a'] = $ya;
+    if ($xb !== null) $params['x_b'] = $xb;
+    if ($yb !== null) $params['y_b'] = $yb;
+} else { // scheme2 / s2
+    $maa = $toIntOrNull($this->request->getPost('min_all_a'));
+    $tka = $toIntOrNull($this->request->getPost('top_k_a'));
+    $mab = $toIntOrNull($this->request->getPost('min_all_b'));
+    $tkb = $toIntOrNull($this->request->getPost('top_k_b'));
+    if ($maa !== null) $params['min_all_a'] = $maa;
+    if ($tka !== null) $params['top_k_a']   = $tka;
+    if ($mab !== null) $params['min_all_b'] = $mab;
+    if ($tkb !== null) $params['top_k_b']   = $tkb;
+}
+
+$data['params_json'] = json_encode($params, JSON_UNESCAPED_UNICODE);
+
+// Nazwa własna lub fallback z parametrów
+$name = trim((string)$this->request->getPost('name'));
+$data['name'] = ($name !== '') ? $name : $this->_schemaAutoNameFromParams(
+    ($schemeRaw !== '' ? $schemeRaw : 'scheme1'),
+    $params
+);
+
+
+// DEBUG: pokaż co przyszło z formularza i co wyślemy do insert()
+log_message('debug', 'SCHEMA CREATE POST: ' . json_encode($this->request->getPost(), JSON_UNESCAPED_UNICODE));
+log_message('debug', 'SCHEMA CREATE DATA(before insert): ' . json_encode($data, JSON_UNESCAPED_UNICODE));
+
+
     $id = $sm->insert($data);
 
     return redirect()->to('/statystyki/schematy')->with('success', 'Dodano schemat #'.$id.'.');
 }
+
+
+
 
 // ==== [DODAJ] edycja schematu ====
 public function schemasEdit(int $id)
@@ -867,6 +952,9 @@ public function schemasEdit(int $id)
 // ==== [DODAJ] zapis zmian (z obsługą `name`) ====
 public function schemasUpdate(int $id)
 {
+
+log_message('debug', __METHOD__.' reached');
+
     $sm  = new \App\Models\StatSchemaModel();
     $row = $sm->find($id);
     if (!$row) return redirect()->to('/statystyki/schematy')->with('error','Nie znaleziono schematu.');
@@ -904,6 +992,47 @@ if ($name !== '') {
     $data['name'] = $this->schemaAutoNameFromRow($rowLike);
 }
 
+$schemeRaw = (string)($data['scheme'] ?? $s['scheme'] ?? $this->request->getPost('scheme') ?? '');
+$schemeKey = strtolower(trim($schemeRaw));
+
+$toIntOrNull = static function($v) {
+    if ($v === '' || $v === null) return null;
+    return (int)$v;
+};
+
+$params = [];
+if ($schemeKey === 'scheme1' || $schemeKey === 's1') {
+    $xa = $toIntOrNull($this->request->getPost('x_a'));
+    $ya = $toIntOrNull($this->request->getPost('y_a'));
+    $xb = $toIntOrNull($this->request->getPost('x_b'));
+    $yb = $toIntOrNull($this->request->getPost('y_b'));
+    if ($xa !== null) $params['x_a'] = $xa; else unset($params['x_a']);
+    if ($ya !== null) $params['y_a'] = $ya; else unset($params['y_a']);
+    if ($xb !== null) $params['x_b'] = $xb; else unset($params['x_b']);
+    if ($yb !== null) $params['y_b'] = $yb; else unset($params['y_b']);
+} else {
+    $maa = $toIntOrNull($this->request->getPost('min_all_a'));
+    $tka = $toIntOrNull($this->request->getPost('top_k_a'));
+    $mab = $toIntOrNull($this->request->getPost('min_all_b'));
+    $tkb = $toIntOrNull($this->request->getPost('top_k_b'));
+    if ($maa !== null) $params['min_all_a'] = $maa; else unset($params['min_all_a']);
+    if ($tka !== null) $params['top_k_a']   = $tka; else unset($params['top_k_a']);
+    if ($mab !== null) $params['min_all_b'] = $mab; else unset($params['min_all_b']);
+    if ($tkb !== null) $params['top_k_b']   = $tkb; else unset($params['top_k_b']);
+}
+
+$data['params_json'] = json_encode($params, JSON_UNESCAPED_UNICODE);
+
+// nazwa (z POST lub fallback)
+$name = trim((string)$this->request->getPost('name'));
+$data['name'] = ($name !== '') ? $name : $this->_schemaAutoNameFromParams(
+    ($schemeRaw !== '' ? $schemeRaw : 'scheme1'),
+    $params
+);
+
+// DEBUG: pokaż co przyszło z formularza i co wyślemy do update()
+log_message('debug', 'SCHEMA UPDATE POST: ' . json_encode($this->request->getPost(), JSON_UNESCAPED_UNICODE));
+log_message('debug', 'SCHEMA UPDATE DATA(before update): ' . json_encode($data, JSON_UNESCAPED_UNICODE));
 
 
     $sm->update($id, $data);

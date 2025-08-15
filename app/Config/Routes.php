@@ -77,6 +77,8 @@ $routes->group('statystyki', static function ($routes) {
 
 $routes->group('strategie', static function($routes){
     $routes->get('/', 'StrategiesController::index');
+    $routes->get('schematy-wg-gry', 'StrategiesController::ajaxSchemasByGame');
+
 
     $routes->get('backfill', 'StatsController::backfillStrategies');
 });

@@ -89,5 +89,20 @@ public function schemasByGame()
 }
 
 
+public function ajaxSchemasByGame()
+{
+    $gid = (int)$this->request->getGet('game_id');
+    $m = new \App\Models\StatSchemaModel();
+    $rows = $m->where('game_id',$gid)->orderBy('id','DESC')->findAll(200);
+
+    $out = [];
+    foreach ($rows as $r) {
+        $label = $r['name'] ?: $this->_schemaAutoNameFromParams($r['scheme'] ?? '', $r['params_json'] ?? []);
+        $out[] = ['id'=>(int)$r['id'], 'display_name'=>$label];
+    }
+    return $this->response->setJSON($out);
+}
+
+
 
 }
